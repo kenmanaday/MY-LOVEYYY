@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>A Little Reminder For You 💕</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap');
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #180811 0%, #350c21 50%, #1a0512 100%);
+            color: #fff0f5;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
+        }
+
+        .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 240, 245, 0.08);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 182, 193, 0.3);
+            box-shadow: 0 20px 40px rgba(225, 29, 72, 0.25), 0 0 20px rgba(244, 114, 182, 0.15);
+            position: relative;
+            z-index: 20;
+        }
+
+        /* Floating Hearts Animation */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.8) rotate(0deg); opacity: 0.95; }
+            100% { transform: translateY(-120px) scale(1.3) rotate(15deg); opacity: 0; }
+        }
+        .floating-heart {
+            position: absolute;
+            pointer-events: none;
+            animation: floatUp 1.4s ease-out forwards;
+        }
+
+        /* Pulse heart glow */
+        @keyframes heartPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(244, 114, 182, 0.6)); }
+            50% { transform: scale(1.12); filter: drop-shadow(0 0 18px rgba(225, 29, 72, 0.9)); }
+        }
+        .pulse-heart {
+            animation: heartPulse 1.8s infinite ease-in-out;
+        }
+
+        /* Button bounce feedback */
+        .btn-bounce {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .btn-bounce:hover {
+            transform: translateY(-2px) scale(1.01);
+        }
+        .btn-bounce:active {
+            transform: translateY(1px) scale(0.96);
+        }
+
+        /* Smooth Flying Fixed Screen Button for Mobile */
+        .evasive-fixed {
+            transition: left 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), top 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 50;
+            position: fixed !important;
+            will-change: left, top;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 relative select-none">
+
+    <!-- Audio Player Toggle -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="musicToggleBtn" onclick="toggleMusic()" class="btn-bounce bg-rose-500/20 backdrop-blur-md border border-rose-400/40 text-pink-200 px-3.5 py-2 rounded-full flex items-center gap-2 text-xs font-semibold shadow-lg">
+            <i data-lucide="music" id="musicIcon" class="w-4 h-4 text-pink-300"></i>
+            <span id="musicStatusText">"Perfect" Melody (Playing)</span>
+        </button>
+    </div>
+
+    <!-- Glowing Background Particles & Flying Love Words Canvas -->
+    <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- Floating Interactive Hearts Container -->
+    <div id="heartContainer" class="fixed inset-0 pointer-events-none z-40 overflow-hidden"></div>
+
+    <!-- Main Outer Container -->
+    <div class="relative z-20 w-full max-w-sm sm:max-w-md my-auto">
+        
+        <!-- Clean Romantic Card Container -->
+        <div class="glass-card rounded-3xl p-5 sm:p-8 flex flex-col justify-between min-h-[400px] transition-all duration-300">
+            
+            <!-- Progress Indicator (Hidden initially) -->
+            <div id="progressHeader" class="hidden mb-2">
+                <div class="flex justify-between items-center text-xs font-semibold mb-2">
+                    <span id="patchCounter" class="text-pink-300 font-display tracking-wide flex items-center gap-1">
+                        <i data-lucide="heart" class="w-3.5 h-3.5 text-pink-400 fill-pink-400"></i>
+                        <span id="counterText">1 of 30</span>
+                    </span>
+                    <span id="patchPercentage" class="text-rose-300 font-display flex items-center gap-1">
+                        <span id="percentageText">3%</span>
+                        <i data-lucide="heart" class="w-3.5 h-3.5 text-rose-400 fill-rose-400"></i>
+                    </span>
+                </div>
+                <!-- Progress Bar Track -->
+                <div class="w-full h-2 bg-rose-950/60 rounded-full overflow-hidden border border-rose-400/20">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-pink-400 via-rose-500 to-red-400 transition-all duration-300 w-[3%] shadow-[0_0_12px_rgba(244,114,182,0.8)]"></div>
+                </div>
+            </div>
+
+            <!-- Main Display Box -->
+            <div class="my-auto py-4 text-center flex flex-col items-center justify-center">
+                
+                <!-- Icon Header - ALL HEARTS -->
+                <div id="iconHeader" class="mb-4 text-rose-300 bg-rose-500/15 p-3.5 rounded-full border border-rose-400/30 shadow-inner">
+                    <i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-300 pulse-heart"></i>
+                </div>
+
+                <!-- Text Output -->
+                <h1 id="mainHeading" class="font-display text-lg sm:text-2xl font-bold text-rose-100 leading-relaxed tracking-wide max-w-xs sm:max-w-sm min-h-[90px] flex items-center justify-center">
+                    Are you sad right now?
+                </h1>
+
+                <!-- Optional Extra Context -->
+                <div id="extraText" class="text-sm text-rose-200/90 mt-3 hidden font-medium leading-relaxed"></div>
+            </div>
+
+            <!-- Action Buttons Container -->
+            <div id="buttonContainer" class="mt-6 flex flex-col gap-3 pt-4 border-t border-rose-500/20 relative min-h-[130px]">
+                <button id="yesBtn" onmouseenter="evadeButton('yesBtn')" ontouchstart="evadeButton('yesBtn')" onclick="handleResponse(true)" class="btn-bounce w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300/30 flex items-center justify-center gap-2 text-base">
+                    <span id="yesText">YES 🥺</span>
+                </button>
+                <button id="noBtn" onmouseenter="evadeButton('noBtn')" ontouchstart="evadeButton('noBtn')" onclick="handleResponse(false)" class="btn-bounce w-full bg-rose-950/50 hover:bg-rose-900/60 text-pink-200 font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl border border-rose-400/30 flex items-center justify-center gap-2 text-base">
+                    <span id="noText">NO 🥰</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // --- WEB AUDIO API ROMANTIC SYNTHESIZER ---
+        let audioCtx = null;
+        let isMusicPlaying = false;
+        let noteTimer = null;
+        let noteIndex = 0;
+
+        const chordProgression = [
+            [207.65, 261.63, 311.13, 415.30, 523.25], 
+            [174.61, 261.63, 311.13, 349.23, 523.25], 
+            [138.59, 277.18, 349.23, 415.30, 554.37], 
+            [155.56, 233.08, 311.13, 392.00, 622.25]  
+        ];
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSoftPluck(freq, time, duration = 1.8) {
+            if (!audioCtx || !isMusicPlaying) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, time);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, time);
+            filter.frequency.exponentialRampToValueAtTime(200, time + duration);
+
+            gain.gain.setValueAtTime(0.0001, time);
+            gain.gain.linearRampToValueAtTime(0.12, time + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(time);
+            osc.stop(time + duration);
+        }
+
+        function scheduleNextNotes() {
+            if (!isMusicPlaying || !audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const measure = Math.floor(noteIndex / 6) % chordProgression.length;
+            const stepInMeasure = noteIndex % 6;
+            const currentChord = chordProgression[measure];
+
+            let pitch;
+            if (stepInMeasure === 0) pitch = currentChord[0];
+            else if (stepInMeasure === 1) pitch = currentChord[1];
+            else if (stepInMeasure === 2) pitch = currentChord[2];
+            else if (stepInMeasure === 3) pitch = currentChord[3];
+            else if (stepInMeasure === 4) pitch = currentChord[4] || currentChord[2];
+            else pitch = currentChord[3];
+
+            playSoftPluck(pitch, now, 1.6);
+
+            noteIndex++;
+            noteTimer = setTimeout(scheduleNextNotes, 280);
+        }
+
+        function startMusic() {
+            initAudioContext();
+            if (isMusicPlaying) return;
+            isMusicPlaying = true;
+            document.getElementById('musicStatusText').innerText = '🎵 "Perfect" Melody (Playing)';
+            scheduleNextNotes();
+        }
+
+        function stopMusic() {
+            isMusicPlaying = false;
+            if (noteTimer) clearTimeout(noteTimer);
+            document.getElementById('musicStatusText').innerText = '🔇 Music Paused';
+        }
+
+        function toggleMusic() {
+            initAudioContext();
+            if (isMusicPlaying) {
+                stopMusic();
+            } else {
+                startMusic();
+            }
+        }
+
+        function ensureMusicPlaying() {
+            if (!isMusicPlaying) {
+                startMusic();
+            } else if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // --- 5-SECOND EVASIVE FULL-SCREEN BUTTONS WITH SEPARATED ZONES FOR PHONES ---
+        let isEvasiveActive = true;
+        let evasionTimer = null;
+        let evasionTimeoutActive = false;
+
+        const evasivePhrases = [
+            "Catch me! 😜", "Too slow! 🏃‍♂️", "Can't touch this! 💕", "Almost! 🙈", "Try again! 🎯", "Too fast! ⚡"
+        ];
+
+        function evadeButton(targetId) {
+            if (!isEvasiveActive || currentStep > 0) return;
+
+            const yesBtn = document.getElementById('yesBtn');
+            const noBtn = document.getElementById('noBtn');
+
+            // Start 5-second window on first tap/hover
+            if (!evasionTimeoutActive) {
+                evasionTimeoutActive = true;
+
+                // Make both buttons fly freely outside the box across the whole screen
+                [yesBtn, noBtn].forEach(btn => {
+                    btn.classList.add('evasive-fixed');
+                    btn.style.width = '130px';
+                });
+
+                // Set initial zone-separated random positions
+                moveButtonToZone('yesBtn');
+                moveButtonToZone('noBtn');
+
+                evasionTimer = setTimeout(() => {
+                    isEvasiveActive = false;
+                    // Reset buttons back inside the container
+                    [yesBtn, noBtn].forEach(btn => {
+                        btn.classList.remove('evasive-fixed');
+                        btn.style.position = '';
+                        btn.style.left = '';
+                        btn.style.top = '';
+                        btn.style.width = '100%';
+                    });
+                    document.getElementById('yesText').innerText = "YES 🥺";
+                    document.getElementById('noText').innerText = "NO 🥰";
+                }, 5000);
+                return;
+            }
+
+            moveButtonToZone(targetId);
+        }
+
+        // ZONE SEPARATION FOR PHONE SCREENS: NO on LEFT side, YES on RIGHT side
+        function moveButtonToZone(targetId) {
+            const btn = document.getElementById(targetId);
+            const textSpan = document.getElementById(targetId === 'yesBtn' ? 'yesText' : 'noText');
+
+            const btnWidth = 130;
+            const btnHeight = 52;
+            const padding = 15;
+
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            let minX, maxX;
+
+            if (targetId === 'noBtn') {
+                // LEFT ZONE (5% to 42%)
+                minX = padding;
+                maxX = Math.max(padding + 10, Math.floor(screenWidth * 0.42 - btnWidth));
+            } else {
+                // RIGHT ZONE (55% to 88%)
+                minX = Math.floor(screenWidth * 0.55);
+                maxX = Math.max(minX + 10, Math.floor(screenWidth - btnWidth - padding));
+            }
+
+            const minY = padding + 60; // Leave room for top bar
+            const maxY = Math.max(minY + 10, Math.floor(screenHeight - btnHeight - padding));
+
+            const newX = Math.floor(minX + Math.random() * (maxX - minX));
+            const newY = Math.floor(minY + Math.random() * (maxY - minY));
+
+            btn.style.left = `${newX}px`;
+            btn.style.top = `${newY}px`;
+
+            if (textSpan) {
+                textSpan.innerText = evasivePhrases[Math.floor(Math.random() * evasivePhrases.length)];
+            }
+        }
+
+        // --- 30 NATURAL, COMFORTING & SIMPLE ENGLISH REMINDERS ---
+        const reminders = [
+            "Even if it feels like the whole world is against you right now, I am always on your side.",
+            "You are never alone in this. I'm right here with you, holding your hand.",
+            "I see how hard you try every single day, and I am so proud of you.",
+            "You don't have to carry all this stress by yourself. Let me share it with you.",
+            "Whatever is making you feel lonely today, remember that you mean everything to me.",
+            "It's okay to have bad days. You don't always have to be strong.",
+            "People might not always understand you, but I do, and I love who you are.",
+            "You are so much smarter, stronger, and more capable than you give yourself credit for.",
+            "Take a deep breath... we will get through this step by step, together.",
+            "I believe in you so much, especially on the days when you find it hard to believe in yourself.",
+            "You bring so much love, warmth, and happiness into my life.",
+            "Don't listen to the negative thoughts in your head—you are doing great.",
+            "Your hard work and kind heart never go unnoticed by me.",
+            "No matter how tough today feels, tomorrow is a brand new start.",
+            "You are essential to me. My world is so much better because you're in it.",
+            "Whenever you feel overwhelmed, just pause and remember how much I love you.",
+            "You are one of a kind, and nobody can ever replace you.",
+            "Don't give up on yourself, babe. I will never stop cheering for you.",
+            "You can handle whatever comes your way. You've conquered hard days before.",
+            "I'm always in your corner, no matter what happens or who stands against us.",
+            "Give yourself a little grace today. You are doing the best you can.",
+            "I love your laugh, your smile, and just sitting next to you doing nothing.",
+            "You are never a burden to me—I am always here to listen.",
+            "Things will get easier soon, I promise. Just keep going.",
+            "You are so talented and have so many good things ahead of you.",
+            "Even when everything feels chaotic, you are my safe place.",
+            "Never doubt your worth. You are loved, needed, and appreciated so much.",
+            "We are a team, and we will face every single obstacle together.",
+            "You are my favorite person in the entire world, always.",
+            "And ALWAYS REMEMBER THAT YOUR GIRLFRIEND IS ALWAYS RIGHT HERE FOR YOU. ❤️"
+        ];
+
+        let currentStep = 0;
+        let isTyping = false;
+        let typingTimeout = null;
+
+        const mainHeading = document.getElementById('mainHeading');
+        const extraText = document.getElementById('extraText');
+        const buttonContainer = document.getElementById('buttonContainer');
+        const progressHeader = document.getElementById('progressHeader');
+        const counterText = document.getElementById('counterText');
+        const percentageText = document.getElementById('percentageText');
+        const progressBar = document.getElementById('progressBar');
+        const iconHeader = document.getElementById('iconHeader');
+
+        function typeWriter(text, element, speed = 18, callback = null) {
+            if (typingTimeout) clearTimeout(typingTimeout);
+            element.innerHTML = '';
+            let i = 0;
+            isTyping = true;
+
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    typingTimeout = setTimeout(type, speed);
+                } else {
+                    isTyping = false;
+                    if (callback) callback();
+                }
+            }
+            type();
+        }
+
+        function spawnHeart(x, y) {
+            const container = document.getElementById('heartContainer');
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart text-pink-400';
+            heart.style.left = `${x - 12}px`;
+            heart.style.top = `${y - 12}px`;
+            heart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
+            container.appendChild(heart);
+            setTimeout(() => heart.remove(), 1400);
+        }
+
+        window.addEventListener('click', (e) => {
+            spawnHeart(e.clientX, e.clientY);
+        });
+
+        function handleResponse(isSad) {
+            ensureMusicPlaying();
+            if (isTyping && currentStep > 0) return;
+
+            if (evasionTimer) clearTimeout(evasionTimer);
+
+            if (!isSad && currentStep === 0) {
+                triggerNoSadness();
+            } else if (!isSad && currentStep > 0) {
+                triggerEarlyRecovery();
+            } else if (isSad) {
+                if (currentStep < reminders.length) {
+                    renderNextReminder();
+                }
+            }
+        }
+
+        function renderNextReminder() {
+            currentStep++;
+            progressHeader.classList.remove('hidden');
+
+            const percent = Math.round((currentStep / reminders.length) * 100);
+            counterText.innerText = `${currentStep} of${reminders.length}`;
+            percentageText.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+
+            iconHeader.innerHTML = `<i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-400/80 pulse-heart"></i>`;
+            lucide.createIcons();
+
+            const message = reminders[currentStep - 1];
+
+            typeWriter(message, mainHeading, 16, () => {
+                if (currentStep === reminders.length) {
+                    renderFinaleScreen();
+                }
+            });
+
+            if (currentStep < reminders.length) {
+                buttonContainer.innerHTML = `
+                    <button onclick="handleResponse(true)" class="btn-bounce w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300/30 flex items-center justify-center gap-2 text-base">
+                        <span>Still feeling sad 🥺</span>
+                    </button>
+                    <button onclick="handleResponse(false)" class="btn-bounce w-full bg-rose-950/50 hover:bg-rose-900/60 text-emerald-300 font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl border border-emerald-400/30 flex items-center justify-center gap-2 text-base">
+                        <span>I feel better now! 🥰</span>
+                    </button>
+                `;
+            } else {
+                buttonContainer.innerHTML = ``;
+            }
+            lucide.createIcons();
+        }
+
+        function triggerNoSadness() {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#f43f5e', '#ec4899', '#fb7185'] });
+            iconHeader.innerHTML = `<i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-300 pulse-heart"></i>`;
+            
+            typeWriter("Yay! I'm so happy you're feeling good! You are amazing babe! 🥰💕", mainHeading, 18);
+            extraText.classList.remove('hidden');
+            extraText.innerText = "Have a wonderful day, handsome!";
+
+            buttonContainer.innerHTML = `
+                <button onclick="resetApp()" class="btn-bounce w-full bg-rose-950/60 hover:bg-rose-900/70 text-rose-200 font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl border border-rose-400/30 flex items-center justify-center gap-2 text-base">
+                    <i data-lucide="heart" class="w-4 h-4 text-pink-300 fill-pink-300"></i>
+                    <span>Read Reminders Again</span>
+                </button>
+            `;
+            lucide.createIcons();
+        }
+
+        function triggerEarlyRecovery() {
+            confetti({ particleCount: 90, spread: 65, origin: { y: 0.6 }, colors: ['#f43f5e', '#ec4899', '#fb7185'] });
+            iconHeader.innerHTML = `<i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-300 pulse-heart"></i>`;
+
+            typeWriter("I'm so glad you feel better! Always remember that your girlfriend is ALWAYS right here for you! 🥰❤️", mainHeading, 18);
+
+            buttonContainer.innerHTML = `
+                <button onclick="resetApp()" class="btn-bounce w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300/30 flex items-center justify-center gap-2 text-base">
+                    <i data-lucide="heart" class="w-4 h-4 fill-current"></i>
+                    <span>Read Reminders Again</span>
+                </button>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderFinaleScreen() {
+            confetti({
+                particleCount: 160,
+                spread: 100,
+                origin: { y: 0.5 },
+                colors: ['#f43f5e', '#ec4899', '#f472b6', '#ffffff']
+            });
+
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    spawnHeart(
+                        window.innerWidth * 0.15 + Math.random() * window.innerWidth * 0.7,
+                        window.innerHeight * 0.3 + Math.random() * window.innerHeight * 0.4
+                    );
+                }, i * 80);
+            }
+
+            iconHeader.innerHTML = `<i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-300 pulse-heart"></i>`;
+
+            extraText.classList.remove('hidden');
+            extraText.innerHTML = `
+                <div class="mt-2 p-3.5 rounded-2xl bg-rose-500/20 border border-rose-400/30 text-rose-100 text-center font-sans">
+                    <p class="font-semibold text-sm">🤗 Big warm hugs delivered!</p>
+                    <p class="text-xs text-rose-200/80 mt-1">Tap anywhere on the screen to send more floating hearts!</p>
+                </div>
+            `;
+
+            buttonContainer.innerHTML = `
+                <button onclick="resetApp()" class="btn-bounce w-full bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 hover:from-rose-400 hover:to-red-400 text-white font-display font-bold min-h-[52px] py-3.5 px-5 rounded-2xl shadow-xl shadow-rose-600/40 border border-rose-200/40 flex items-center justify-center gap-2 text-base">
+                    <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
+                    <span>Read Reminders Again ❤️</span>
+                </button>
+            `;
+            lucide.createIcons();
+        }
+
+        function resetApp() {
+            currentStep = 0;
+            isEvasiveActive = true;
+            evasionTimeoutActive = false;
+            progressHeader.classList.add('hidden');
+            extraText.classList.add('hidden');
+            progressBar.style.width = '3%';
+
+            iconHeader.innerHTML = `<i data-lucide="heart" class="w-8 h-8 text-pink-300 fill-pink-300 pulse-heart"></i>`;
+            typeWriter("Are you sad right now?", mainHeading, 20);
+
+            buttonContainer.innerHTML = `
+                <button id="yesBtn" onmouseenter="evadeButton('yesBtn')" ontouchstart="evadeButton('yesBtn')" onclick="handleResponse(true)" class="btn-bounce w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300/30 flex items-center justify-center gap-2 text-base">
+                    <span id="yesText">YES 🥺</span>
+                </button>
+                <button id="noBtn" onmouseenter="evadeButton('noBtn')" ontouchstart="evadeButton('noBtn')" onclick="handleResponse(false)" class="btn-bounce w-full bg-rose-950/50 hover:bg-rose-900/60 text-pink-200 font-display font-semibold min-h-[52px] py-3.5 px-5 rounded-2xl border border-rose-400/30 flex items-center justify-center gap-2 text-base">
+                    <span id="noText">NO 🥰</span>
+                </button>
+            `;
+            lucide.createIcons();
+        }
+
+        // --- BACKGROUND CANVAS: FLOATING LOVE PHRASES & GLOWING PARTICLES ---
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let elements = [];
+        const lovePhrases = ["I love you ❤️", "I miss you 💕", "My world ✨", "Always here 💖", "My favorite person 🌸", "You're amazing 💫", "Forever yours 💞"];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initBackgroundElements();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        class BackgroundElement {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + Math.random() * 50;
+                this.isPhrase = Math.random() > 0.6;
+                this.text = lovePhrases[Math.floor(Math.random() * lovePhrases.length)];
+                this.size = this.isPhrase ? (Math.random() * 4 + 13) : (Math.random() * 3 + 1.5);
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = -Math.random() * 0.5 - 0.2;
+                this.alpha = Math.random() * 0.35 + 0.1;
+                this.color = Math.random() > 0.4 ? '244, 114, 182' : '225, 29, 72';
+            }
+
+            draw() {
+                ctx.save();
+                if (this.isPhrase) {
+                    ctx.font = `${this.size}px 'Quicksand', sans-serif`;
+                    ctx.fillStyle = `rgba(${this.color}, ${this.alpha})`;
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = `rgba(${this.color}, 0.5)`;
+                    ctx.fillText(this.text, this.x, this.y);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${this.color}, ${this.alpha})`;
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = `rgba(${this.color}, 0.6)`;
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.y < -30) {
+                    this.reset();
+                }
+            }
+        }
+
+        function initBackgroundElements() {
+            elements = [];
+            const count = Math.min(Math.floor(window.innerWidth / 35), 25);
+            for (let i = 0; i < count; i++) {
+                elements.push(new BackgroundElement());
+            }
+        }
+
+        function animateBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            elements.forEach(el => {
+                el.update();
+                el.draw();
+            });
+            requestAnimationFrame(animateBackground);
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+            animateBackground();
+        };
+    </script>
+</body>
+</html>
